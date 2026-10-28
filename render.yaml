@@ -1,7 +1,7 @@
 
 services:
   - type: worker
-    name: bot-200e-ultra-light
+    name: bot-200e-auto-capital
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -15,3 +15,7 @@ services:
         value: -6.0
       - key: POSITION_USD
         value: 10
+      - key: AUTO_EXECUTE
+        value: true
+      - key: CAPITAL_IS_DEMO
+        value: true
