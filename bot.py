@@ -17,8 +17,8 @@ CAPITAL = float(os.getenv("CAPITAL", "200"))
 RISK_EUROS = float(os.getenv("RISK_EUROS", "2.0"))
 DAILY_STOP = float(os.getenv("DAILY_STOP", "-6.0"))
 POSITION_USD = float(os.getenv("POSITION_USD", "10"))
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "9185466810")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "AAHfoSgDsIREFsGXLRlMBS8VXvsB_dGRIdg")
 
 RR_MIN = 1.8
 CHECK_MINUTES = 240
