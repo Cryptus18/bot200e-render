@@ -1,21 +1,8 @@
+
 services:
   - type: worker
-    name: bot-200e-fibonacci
+    name: bot-200e-ultra-light
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python bot_railway_200e.py
-    envVars:
-      - key: CAPITAL
-        value: 200
-      - key: RISK_EUROS
-        value: 2.0
-      - key: DAILY_STOP
-        value: -6.0
-      - key: POSITION_USD
-        value: 10
-      - key: MAX_POSITIONS
-        value: 2
-      - key: TELEGRAM_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
