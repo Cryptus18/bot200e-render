@@ -5,4 +5,13 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python bot_railway_200e.py
+    startCommand: python bot.py
+    envVars:
+      - key: CAPITAL
+        value: 200
+      - key: RISK_EUROS
+        value: 2.0
+      - key: DAILY_STOP
+        value: -6.0
+      - key: POSITION_USD
+        value: 10
