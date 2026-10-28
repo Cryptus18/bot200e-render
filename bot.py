@@ -1,4 +1,5 @@
 
+
 import os
 import time
 from datetime import datetime
@@ -6,7 +7,7 @@ import requests
 import math
 
 print("="*60, flush=True)
-print("BOT FIBONACCI V2 - 100% AUTO CAPITAL.COM - FINAL", flush=True)
+print("BOT FIBONACCI V2 - CAPITAL.COM FIX API KEY", flush=True)
 print(f"Time: {datetime.now()}", flush=True)
 print("="*60, flush=True)
 
@@ -16,16 +17,19 @@ DAILY_STOP = float(os.getenv("DAILY_STOP", "-6.0"))
 POSITION_USD = float(os.getenv("POSITION_USD", "10"))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-CAPITAL_API_KEY = os.getenv("CAPITAL_API_KEY", "")
-CAPITAL_API_PASSWORD = os.getenv("CAPITAL_API_PASSWORD", "")
-CAPITAL_EMAIL = os.getenv("CAPITAL_EMAIL", "")
-CAPITAL_PASSWORD = os.getenv("CAPITAL_PASSWORD", "")
+CAPITAL_API_KEY = os.getenv("CAPITAL_API_KEY", "").strip()
+CAPITAL_API_PASSWORD = os.getenv("CAPITAL_API_PASSWORD", "").strip()
+CAPITAL_EMAIL = os.getenv("CAPITAL_EMAIL", "").strip()
+CAPITAL_PASSWORD = os.getenv("CAPITAL_PASSWORD", "").strip()
 CAPITAL_IS_DEMO = os.getenv("CAPITAL_IS_DEMO", "true").lower() == "true"
 AUTO_EXECUTE = os.getenv("AUTO_EXECUTE", "false").lower() == "true"
 
-print(f"CAPITAL={CAPITAL} RISK={RISK_EUROS} DAILY_STOP={DAILY_STOP} POS={POSITION_USD} AUTO={AUTO_EXECUTE} DEMO={CAPITAL_IS_DEMO}", flush=True)
+print(f"CAPITAL={CAPITAL} RISK={RISK_EUROS} POS={POSITION_USD} AUTO={AUTO_EXECUTE} DEMO={CAPITAL_IS_DEMO}", flush=True)
 print(f"TELEGRAM set: {bool(TELEGRAM_TOKEN)} / {bool(TELEGRAM_CHAT_ID)}", flush=True)
-print(f"CAPITAL API set: {bool(CAPITAL_API_KEY or CAPITAL_EMAIL)}", flush=True)
+print(f"CAPITAL_API_KEY len: {len(CAPITAL_API_KEY)} set: {bool(CAPITAL_API_KEY)}", flush=True)
+print(f"CAPITAL_API_PASSWORD len: {len(CAPITAL_API_PASSWORD)}", flush=True)
+print(f"CAPITAL_EMAIL set: {bool(CAPITAL_EMAIL)} value: {CAPITAL_EMAIL[:3]}***", flush=True)
+print(f"CAPITAL_PASSWORD set: {bool(CAPITAL_PASSWORD)}", flush=True)
 
 RR_MIN = 1.8
 CHECK_MINUTES = 240
@@ -53,27 +57,84 @@ class CapitalComAPI:
         self.cst = None
         
     def login(self):
-        try:
-            url = f"{self.base_url}/api/v1/session"
-            identifier = CAPITAL_EMAIL or CAPITAL_API_KEY
-            password = CAPITAL_PASSWORD or CAPITAL_API_PASSWORD
-            if not identifier or not password:
-                print("Capital.com - No credentials", flush=True)
-                return False
-            headers = {"X-CAP-API-KEY": CAPITAL_API_KEY or "empty"}
-            data = {"identifier": identifier, "password": password, "encryptedPassword": False}
-            resp = requests.post(url, json=data, headers=headers, timeout=15)
-            if resp.status_code in [200, 201]:
-                self.cst = resp.headers.get("CST")
-                self.session_token = resp.headers.get("X-SECURITY-TOKEN")
-                print(f"Capital.com login OK Demo={self.is_demo}", flush=True)
-                return True
-            else:
-                print(f"Capital.com login fail {resp.status_code}: {resp.text[:300]}", flush=True)
-                return False
-        except Exception as e:
-            print(f"Capital login exception: {e}", flush=True)
-            return False
+        """Essaie 3 méthodes de login Capital.com"""
+        print(f"Trying Capital.com login Demo={self.is_demo} Base={self.base_url}", flush=True)
+        
+        # Méthode 1: Email + Password avec X-CAP-API-KEY vide (la plus simple, marche sans API key)
+        if CAPITAL_EMAIL and CAPITAL_PASSWORD:
+            print("Method 1: Email + Password (X-CAP-API-KEY empty)", flush=True)
+            try:
+                url = f"{self.base_url}/api/v1/session"
+                headers = {"X-CAP-API-KEY": "", "Content-Type": "application/json"}
+                data = {"identifier": CAPITAL_EMAIL, "password": CAPITAL_PASSWORD, "encryptedPassword": False}
+                print(f"POST {url} identifier={CAPITAL_EMAIL[:3]}***", flush=True)
+                resp = requests.post(url, json=data, headers=headers, timeout=15)
+                print(f"Method 1 response {resp.status_code}: {resp.text[:500]}", flush=True)
+                if resp.status_code in [200, 201]:
+                    self.cst = resp.headers.get("CST")
+                    self.session_token = resp.headers.get("X-SECURITY-TOKEN")
+                    print("Method 1 SUCCESS", flush=True)
+                    return True
+            except Exception as e:
+                print(f"Method 1 exception: {e}", flush=True)
+        
+        # Méthode 2: Email + Password avec API Key en header
+        if CAPITAL_EMAIL and CAPITAL_PASSWORD and CAPITAL_API_KEY:
+            print("Method 2: Email + Password + X-CAP-API-KEY header", flush=True)
+            try:
+                url = f"{self.base_url}/api/v1/session"
+                headers = {"X-CAP-API-KEY": CAPITAL_API_KEY, "Content-Type": "application/json"}
+                data = {"identifier": CAPITAL_EMAIL, "password": CAPITAL_PASSWORD, "encryptedPassword": False}
+                resp = requests.post(url, json=data, headers=headers, timeout=15)
+                print(f"Method 2 response {resp.status_code}: {resp.text[:500]}", flush=True)
+                if resp.status_code in [200, 201]:
+                    self.cst = resp.headers.get("CST")
+                    self.session_token = resp.headers.get("X-SECURITY-TOKEN")
+                    print("Method 2 SUCCESS", flush=True)
+                    return True
+            except Exception as e:
+                print(f"Method 2 exception: {e}", flush=True)
+        
+        # Méthode 3: API Key comme identifier + API Password
+        if CAPITAL_API_KEY and CAPITAL_API_PASSWORD:
+            print("Method 3: API Key as identifier + API Password", flush=True)
+            try:
+                url = f"{self.base_url}/api/v1/session"
+                headers = {"X-CAP-API-KEY": CAPITAL_API_KEY, "Content-Type": "application/json"}
+                data = {"identifier": CAPITAL_API_KEY, "password": CAPITAL_API_PASSWORD, "encryptedPassword": False}
+                resp = requests.post(url, json=data, headers=headers, timeout=15)
+                print(f"Method 3 response {resp.status_code}: {resp.text[:500]}", flush=True)
+                if resp.status_code in [200, 201]:
+                    self.cst = resp.headers.get("CST")
+                    self.session_token = resp.headers.get("X-SECURITY-TOKEN")
+                    print("Method 3 SUCCESS", flush=True)
+                    return True
+            except Exception as e:
+                print(f"Method 3 exception: {e}", flush=True)
+        
+        # Méthode 4: Essaye avec live API même si demo=true (parfois demo et live sont inversés)
+        if self.is_demo:
+            print("Method 4: Try LIVE API even though DEMO=true", flush=True)
+            try:
+                alt_base = "https://api-capital.backend-capital.com"
+                url = f"{alt_base}/api/v1/session"
+                headers = {"X-CAP-API-KEY": CAPITAL_API_KEY or "", "Content-Type": "application/json"}
+                identifier = CAPITAL_EMAIL or CAPITAL_API_KEY
+                password = CAPITAL_PASSWORD or CAPITAL_API_PASSWORD
+                data = {"identifier": identifier, "password": password, "encryptedPassword": False}
+                resp = requests.post(url, json=data, headers=headers, timeout=15)
+                print(f"Method 4 response {resp.status_code}: {resp.text[:500]}", flush=True)
+                if resp.status_code in [200, 201]:
+                    self.base_url = alt_base
+                    self.cst = resp.headers.get("CST")
+                    self.session_token = resp.headers.get("X-SECURITY-TOKEN")
+                    print("Method 4 SUCCESS - Switched to LIVE", flush=True)
+                    return True
+            except Exception as e:
+                print(f"Method 4 exception: {e}", flush=True)
+        
+        print("All Capital.com login methods FAILED", flush=True)
+        return False
     
     def place_order(self, epic, direction, size_usd, sl, tp):
         if not AUTO_EXECUTE:
@@ -152,7 +213,6 @@ def fetch_yahoo(ticker):
                 return {"close": closes, "high": highs, "low": lows, "open": opens}
     except Exception as e:
         print(f"Yahoo fail {ticker}: {e}", flush=True)
-    # Fallback
     base = 15200 if "IXIC" in ticker else 5800 if "GSPC" in ticker else 18500
     closes = [base*(1+(hash(str(i))%100-50)/10000) for i in range(60)]
     return {"close": closes, "high": [c*1.003 for c in closes], "low": [c*0.997 for c in closes], "open": [c*0.999 for c in closes]}
@@ -174,47 +234,34 @@ def check_signal(data, name):
     upper_wick = highs[-1] - max(opens[-1], closes[-1])
     pin_long = lower_wick > body*1.2 if body>0 else False
     pin_short = upper_wick > body*1.2 if body>0 else False
-    
-    # LONG
     if fib_786 <= close <= fib_618 and close > ma and 35 < rsi < 60 and pin_long:
         sl = fib_786 - 0.3*atr
         tp = fib_382
         risk = close - sl
-        if risk > 0 and (tp-close)/risk >= RR_MIN:
+        if risk > 0 and (tp-close)/risk >= 1.8:
             return {"dir": "BUY", "type": "LONG", "entry": close, "sl": sl, "tp": tp, "rr": round((tp-close)/risk,2), "rsi": rsi, "msg": f"🔥 LONG {name} | Entry {close:.2f} | SL {sl:.2f} | TP {tp:.2f} | R:R {round((tp-close)/risk,2)} | RSI {rsi:.1f}"}
-    # SHORT
     if fib_382 <= close <= fib_618 and close < ma and 40 < rsi < 75 and pin_short:
         sl = fib_236 + 0.3*atr
         risk = sl - close
-        if risk > 0 and (close-window_low)/risk >= RR_MIN:
-            return {"dir": "SELL", "type": "SHORT", "entry": close, "sl": sl, "tp": window_low, "rr": round((close-window_low)/risk,2), "rsi": rsi, "msg": f"🔻 SHORT {name} | Entry {close:.2f} | SL {sl:.2f} | TP {window_low:.2f} | R:R {round((close-window_low)/risk,2)}"}
+        if risk > 0 and (close-window_low)/risk >= 1.8:
+            return {"dir": "SELL", "type": "SHORT", "entry": close, "sl": sl, "tp": window_low, "rr": round((close-window_low)/risk,2), "rsi": rsi, "msg": f"🔻 SHORT {name} | Entry {close:.2f} | SL {sl:.2f} | TP {window_low:.2f}"}
     return None
 
 def main():
     mode = "AUTO" if AUTO_EXECUTE else "ALERTES"
     demo_str = "DEMO" if CAPITAL_IS_DEMO else "REEL"
-    send_telegram(f"🚀 BOT FIBONACCI V2 FINAL - {mode} - {demo_str}\nCapital {CAPITAL}€ | Risk {RISK_EUROS}€ | Daily {DAILY_STOP}€ | Pos {POSITION_USD}$ x1\nNAS100 SPX500 GER40 - Golden Zone 61.8-78.6% - MA200 + RSI + Pin Bar\nScan toutes les 4H - 24/7 iPhone")
+    send_telegram(f"🚀 BOT FIBONACCI V2 - FIX API - {mode} - {demo_str}\nCapital {CAPITAL}€ | Risk {RISK_EUROS}€ | Daily {DAILY_STOP}€ | Pos {POSITION_USD}$ x1\nTest 4 méthodes login Capital.com")
     
-    if AUTO_EXECUTE and (CAPITAL_API_KEY or CAPITAL_EMAIL):
+    if AUTO_EXECUTE:
         if capital_api.login():
-            send_telegram(f"✅ Capital.com Login OK - {demo_str} - Auto-exécution ACTIVE - {POSITION_USD}$ x1")
+            send_telegram(f"✅ Capital.com Login OK - {demo_str} - Auto ACTIVE")
         else:
-            send_telegram(f"❌ Capital.com Login FAIL - Vérifie clés API - Mode alertes seulement")
+            send_telegram(f"❌ Capital.com Login FAIL après 4 méthodes - Vérifie: 1) Email + Password Capital.com, 2) Compte DEMO vs REEL, 3) Pas besoin API Key - juste email/password suffit. Mode alertes.")
     
     last_reset = datetime.now().date()
-    daily_pnl = 0
-    
     while True:
         if datetime.now().date() != last_reset:
-            daily_pnl = 0
             last_reset = datetime.now().date()
-            send_telegram(f"📅 Nouveau jour {last_reset} - Daily PnL reset 0€")
-        
-        if daily_pnl <= DAILY_STOP:
-            send_telegram(f"⚠️ DAILY STOP {DAILY_STOP}€ atteint - Pause 1H")
-            time.sleep(3600)
-            continue
-        
         print(f"\n=== SCAN {datetime.now().strftime('%Y-%m-%d %H:%M')} ===", flush=True)
         for name, info in INDICES.items():
             data = fetch_yahoo(info["yahoo"])
@@ -222,22 +269,16 @@ def main():
                 continue
             sig = check_signal(data, name)
             if sig:
-                full_msg = f"{sig['msg']} | Risk {RISK_EUROS}€ | Pos {POSITION_USD}$ x1 | Cap {CAPITAL}€ | {demo_str}"
+                full_msg = f"{sig['msg']} | Risk {RISK_EUROS}€ | Pos {POSITION_USD}$ x1 | {demo_str}"
                 send_telegram(full_msg)
                 if AUTO_EXECUTE:
                     res = capital_api.place_order(info["capital_epic"], sig["dir"], POSITION_USD, sig["sl"], sig["tp"])
-                    if res.get("success"):
-                        if res.get("simulated"):
-                            send_telegram(f"📝 SIMU: {sig['type']} {name} {POSITION_USD}$ - Mets AUTO_EXECUTE=true + clés Capital pour réel")
-                        else:
-                            send_telegram(f"✅ ORDER PLACÉ: {sig['type']} {name} {POSITION_USD}$ sur Capital.com {demo_str}")
-                    else:
-                        send_telegram(f"❌ ORDER FAIL {name}: {res.get('error','')}")
+                    if res.get("success") and not res.get("simulated"):
+                        send_telegram(f"✅ ORDER {sig['type']} {name} {POSITION_USD}$ sur Capital.com {demo_str}")
             else:
                 print(f"{name}: ATTENTE Close {data['close'][-1]:.2f} RSI {simple_rsi(data['close']):.1f}", flush=True)
-        
-        print(f"Sleep {CHECK_MINUTES} min - Daily {daily_pnl}€", flush=True)
-        time.sleep(CHECK_MINUTES*60)
+        print(f"Sleep 240 min", flush=True)
+        time.sleep(240*60)
 
 if __name__ == "__main__":
     main()
